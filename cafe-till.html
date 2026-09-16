@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cafe Till</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --board:      #1C3A32;
+    --board-deep: #142A24;
+    --chalk:      #F1EFE7;
+    --chalk-dim:  #8FA79E;
+    --paper:      #FCFBF7;
+    --ink:        #15191A;
+    --ink-dim:    #6E7573;
+    --amber:      #D8A02B;
+    --rule:       #D8D4C8;
+    --page:       #C9CFCB;
+    --sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:  #E9E6DE;
+      --page:   #0E1513;
+      --rule:   #C6C1B4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #E9E6DE;
+    --page:  #0E1513;
+    --rule:  #C6C1B4;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    font-family: var(--sans);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  .till {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 21rem;
+    min-height: 100vh;
+    max-width: 68rem;
+    margin: 0 auto;
+  }
+
+  /* ---------- menu board ---------- */
+  .board {
+    background: var(--board);
+    background-image:
+      radial-gradient(ellipse at 22% 12%, rgba(255,255,255,.045), transparent 62%),
+      radial-gradient(ellipse at 78% 88%, rgba(255,255,255,.03), transparent 58%);
+    color: var(--chalk);
+    padding: 2.25rem 2rem 3rem;
+  }
+  .board h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    margin: 0 0 .15rem;
+  }
+  .board .sub {
+    color: var(--chalk-dim);
+    font-size: .82rem;
+    margin: 0 0 2rem;
+    max-width: 34ch;
+    line-height: 1.5;
+  }
+
+  .group { margin-bottom: 1.9rem; }
+  .group h2 {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--amber);
+    margin: 0 0 .7rem;
+    padding-bottom: .4rem;
+    border-bottom: 1px solid rgba(241,239,231,.16);
+  }
+  .items { display: grid; gap: .3rem; }
+
+  .item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: .6rem;
+    width: 100%;
+    background: none;
+    border: 0;
+    border-radius: 3px;
+    padding: .5rem .55rem;
+    color: var(--chalk);
+    font-size: .92rem;
+    text-align: left;
+    transition: background .12s ease;
+  }
+  .item:hover, .item:focus-visible { background: rgba(241,239,231,.09); }
+  .item:active { background: rgba(241,239,231,.16); }
+  .item .dots {
+    flex: 1;
+    border-bottom: 1px dotted rgba(241,239,231,.28);
+    transform: translateY(-.25rem);
+    margin: 0 .2rem;
+  }
+  .item .name { display: flex; align-items: baseline; }
+  .item .price { font-family: var(--mono); color: var(--chalk-dim); font-size: .86rem; }
+  .item[data-in-order="true"] .price { color: var(--amber); }
+
+  .qty-flash {
+    position: fixed;
+    pointer-events: none;
+    font-family: var(--mono);
+    font-size: .8rem;
+    color: var(--amber);
+    animation: rise .6s ease-out forwards;
+  }
+  @keyframes rise {
+    to { transform: translateY(-2.2rem); opacity: 0; }
+  }
+
+  /* ---------- receipt ---------- */
+  .receipt-col { background: var(--page); padding: 1.5rem 1.25rem 2rem 0; }
+  .receipt {
+    position: sticky;
+    top: 1.5rem;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: .82rem;
+    line-height: 1.55;
+    padding: 1.4rem 1.15rem 1.15rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px rgba(0,0,0,.14);
+    /* torn bottom edge */
+    -webkit-mask-image: linear-gradient(#000 0 0), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 0h16v4l-2 4-2-4-2 4-2-4-2 4-2-4-2 4-2-4z' fill='%23000'/%3E%3C/svg%3E");
+    -webkit-mask-size: 100% calc(100% - 8px), 16px 8px;
+    -webkit-mask-repeat: no-repeat, repeat-x;
+    -webkit-mask-position: top left, bottom left;
+    mask-image: linear-gradient(#000 0 0), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 0h16v4l-2 4-2-4-2 4-2-4-2 4-2-4-2 4-2-4z' fill='%23000'/%3E%3C/svg%3E");
+    mask-size: 100% calc(100% - 8px), 16px 8px;
+    mask-repeat: no-repeat, repeat-x;
+    mask-position: top left, bottom left;
+  }
+  .receipt .head { text-align: center; margin-bottom: .9rem; }
+  .receipt .head strong { font-weight: 700; letter-spacing: .06em; display: block; }
+  .receipt .head span { color: var(--ink-dim); font-size: .72rem; }
+  .dashed { border-top: 1px dashed var(--rule); margin: .75rem 0; }
+
+  .empty { color: var(--ink-dim); text-align: center; padding: 1.2rem .4rem; font-size: .78rem; line-height: 1.6; }
+
+  .line { margin-bottom: .55rem; }
+  .line .top { display: flex; justify-content: space-between; gap: .5rem; }
+  .line .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .line .unit { color: var(--ink-dim); font-size: .72rem; }
+  .stepper { display: flex; align-items: center; gap: .35rem; margin-top: .1rem; }
+  .stepper button {
+    width: 1.35rem; height: 1.35rem;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: .85rem;
+    line-height: 1;
+    border-radius: 2px;
+  }
+  .stepper button:hover { background: rgba(0,0,0,.06); }
+  .stepper input {
+    width: 2.6rem;
+    font-family: var(--mono);
+    font-size: .78rem;
+    text-align: center;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--ink);
+    border-radius: 2px;
+    padding: .15rem 0;
+  }
+  .stepper .kill {
+    margin-left: auto;
+    border: 0;
+    background: none;
+    color: var(--ink-dim);
+    font-size: .72rem;
+    text-decoration: underline;
+    padding: 0;
+  }
+  .stepper .kill:hover { color: var(--ink); }
+
+  .warn {
+    color: #8C2F1E;
+    font-size: .72rem;
+    margin-top: .2rem;
+    min-height: 0;
+  }
+
+  .totals .row { display: flex; justify-content: space-between; }
+  .totals .grand {
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-top: .3rem;
+    padding-top: .45rem;
+    border-top: 1px solid var(--ink);
+  }
+
+  .pay {
+    width: 100%;
+    margin-top: 1rem;
+    padding: .7rem;
+    border: 0;
+    border-radius: 2px;
+    background: var(--board);
+    color: var(--chalk);
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: .88rem;
+  }
+  .pay:disabled { background: var(--rule); color: var(--ink-dim); cursor: not-allowed; }
+  .pay:not(:disabled):hover { background: var(--board-deep); }
+
+  .after { margin-top: 1.1rem; font-family: var(--sans); }
+  .after h3 {
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--chalk-dim);
+    margin: 0 0 .5rem;
+  }
+  .past { list-style: none; margin: 0; padding: 0; font-family: var(--mono); font-size: .74rem; color: var(--chalk-dim); }
+  .past li { display: flex; justify-content: space-between; padding: .18rem 0; }
+  .past li button { background: none; border: 0; color: inherit; font: inherit; padding: 0; text-decoration: underline dotted; }
+  .past li button:hover { color: var(--chalk); }
+  .clear-all { background: none; border: 0; color: var(--chalk-dim); font-family: var(--sans); font-size: .7rem; text-decoration: underline; padding: .4rem 0 0; }
+  .clear-all:hover { color: var(--chalk); }
+  .stat { display: flex; justify-content: space-between; font-family: var(--mono); font-size: .74rem; color: var(--chalk-dim); padding: .18rem 0; }
+  .stat b { color: var(--amber); font-weight: 400; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+    background: var(--board-deep); color: var(--chalk);
+    font-size: .8rem; padding: .6rem 1rem; border-radius: 3px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.3);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+    z-index: 20;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 860px) {
+    .till { grid-template-columns: 1fr; }
+    .board { padding: 1.75rem 1.25rem 2rem; }
+    .receipt-col { padding: 0 1.25rem 2.5rem; }
+    .receipt { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<div class="till">
+  <main class="board">
+    <h1>Cafe till</h1>
+    <p class="sub">Tap an item to add it. Quantities and totals follow the same rules as the command line version, including the price snapshot.</p>
+    <div id="menu"></div>
+  </main>
+
+  <aside class="receipt-col">
+    <div class="receipt">
+      <div class="head">
+        <strong>THE CORNER CAFE</strong>
+        <span id="stamp"></span>
+      </div>
+      <div class="dashed"></div>
+      <div id="lines"></div>
+      <div class="dashed"></div>
+      <div class="totals">
+        <div class="row"><span>Items</span><span id="count">0</span></div>
+        <div class="row grand"><span>TOTAL</span><span id="total">£0.00</span></div>
+      </div>
+      <button class="pay" id="pay" disabled>Take payment</button>
+    </div>
+
+    <div class="after">
+      <h3>Today</h3>
+      <div class="stat"><span>Orders</span><b id="s-orders">0</b></div>
+      <div class="stat"><span>Revenue</span><b id="s-rev">£0.00</b></div>
+      <div class="stat"><span>Best seller</span><b id="s-best">none yet</b></div>
+      <ul class="past" id="past"></ul>
+      <button class="clear-all" id="reset" hidden>Clear saved orders</button>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Every price is whole pence. Same reasoning as the Python version: a binary
+  // float cannot hold 0.10 exactly, so repeated addition drifts. Integers of the
+  // smallest unit cannot drift at all.
+  var MENU = [
+    { name: "Espresso",        pence: 220, group: "Drinks" },
+    { name: "Flat White",      pence: 310, group: "Drinks" },
+    { name: "Latte",           pence: 320, group: "Drinks" },
+    { name: "Cappuccino",      pence: 320, group: "Drinks" },
+    { name: "Tea",             pence: 200, group: "Drinks" },
+    { name: "Hot Chocolate",   pence: 340, group: "Drinks" },
+    { name: "Croissant",       pence: 260, group: "Food" },
+    { name: "Bacon Roll",      pence: 450, group: "Food" },
+    { name: "Toastie",         pence: 480, group: "Food" },
+    { name: "Soup of the Day", pence: 520, group: "Food" },
+    { name: "Brownie",         pence: 280, group: "Cakes" },
+    { name: "Carrot Cake",     pence: 360, group: "Cakes" }
+  ];
+
+  var MAX_QTY = 99;
+  var KEY = "cafe-till-orders";
+
+  var order = [];   // { name, unitPence, qty }
+  var saved = [];   // { id, at, totalPence, lines }
+  var warning = null;
+
+  function money(pence) {
+    return "£" + (pence / 100).toFixed(2);
+  }
+
+  // Mirrors validate_quantity(). Rejects blanks, non-integers, zero, negatives
+  // and anything over the cap. Returns null when invalid.
+  function cleanQty(raw) {
+    var text = String(raw).trim();
+    if (!text) return null;
+    if (!/^\d+$/.test(text)) return null;
+    var n = parseInt(text, 10);
+    if (n <= 0 || n > MAX_QTY) return null;
+    return n;
+  }
+
+  function find(name) {
+    for (var i = 0; i < MENU.length; i++) {
+      if (MENU[i].name === name) return MENU[i];
+    }
+    return null;
+  }
+
+  function totalPence() {
+    return order.reduce(function (sum, l) { return sum + l.unitPence * l.qty; }, 0);
+  }
+  function itemCount() {
+    return order.reduce(function (sum, l) { return sum + l.qty; }, 0);
+  }
+
+  function add(name, event) {
+    var item = find(name);
+    if (!item) return;
+    warning = null;
+
+    for (var i = 0; i < order.length; i++) {
+      if (order[i].name === name) {
+        if (order[i].qty + 1 > MAX_QTY) {
+          warning = { name: name, text: "Maximum " + MAX_QTY + " per item." };
+          render();
+          return;
+        }
+        order[i].qty += 1;
+        flash(event);
+        render();
+        return;
+      }
+    }
+    // The unit price is copied onto the line here, not looked up later. If the
+    // menu price changes, orders already taken keep the price they were sold at.
+    order.push({ name: item.name, unitPence: item.pence, qty: 1 });
+    flash(event);
+    render();
+  }
+
+  function setQty(name, raw) {
+    var n = cleanQty(raw);
+    if (n === null) {
+      warning = { name: name, text: "Whole number between 1 and " + MAX_QTY + "." };
+      render();
+      return;
+    }
+    warning = null;
+    for (var i = 0; i < order.length; i++) {
+      if (order[i].name === name) { order[i].qty = n; break; }
+    }
+    render();
+  }
+
+  function bump(name, delta) {
+    for (var i = 0; i < order.length; i++) {
+      if (order[i].name !== name) continue;
+      var next = order[i].qty + delta;
+      if (next < 1) { remove(name); return; }
+      if (next > MAX_QTY) {
+        warning = { name: name, text: "Maximum " + MAX_QTY + " per item." };
+        render();
+        return;
+      }
+      order[i].qty = next;
+      warning = null;
+      render();
+      return;
+    }
+  }
+
+  function remove(name) {
+    order = order.filter(function (l) { return l.name !== name; });
+    warning = null;
+    render();
+  }
+
+  function flash(event) {
+    if (!event || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var el = document.createElement("div");
+    el.className = "qty-flash";
+    el.textContent = "+1";
+    el.style.left = event.clientX + "px";
+    el.style.top = (event.clientY - 10) + "px";
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 620);
+  }
+
+  /* ---------- storage: the browser's stand-in for SQLite ---------- */
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      saved = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(saved)) saved = [];
+    } catch (e) {
+      saved = [];   // private browsing, quota, corrupt JSON: carry on empty
+    }
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(saved));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function takePayment() {
+    if (!order.length) return;
+    // Header and lines are written together, so there is no way to end up with
+    // an order recorded that has nothing in it.
+    var record = {
+      id: (saved.length ? saved[0].id : 0) + 1,
+      at: new Date().toISOString(),
+      totalPence: totalPence(),
+      lines: order.map(function (l) {
+        return { name: l.name, unitPence: l.unitPence, qty: l.qty };
+      })
+    };
+    saved.unshift(record);
+    var ok = persist();
+    toast(ok
+      ? "Order #" + record.id + " saved, " + money(record.totalPence)
+      : "Order taken, but this browser would not save it");
+    order = [];
+    warning = null;
+    render();
+  }
+
+  function recall(id) {
+    var rec = null;
+    for (var i = 0; i < saved.length; i++) { if (saved[i].id === id) rec = saved[i]; }
+    if (!rec) return;
+    order = rec.lines.map(function (l) {
+      return { name: l.name, unitPence: l.unitPence, qty: l.qty };
+    });
+    warning = null;
+    render();
+    toast("Order #" + id + " reopened at the prices it was sold at");
+  }
+
+  function clearSaved() {
+    saved = [];
+    persist();
+    render();
+    toast("Saved orders cleared");
+  }
+
+  function bestSeller() {
+    var tally = {};
+    saved.forEach(function (rec) {
+      rec.lines.forEach(function (l) {
+        tally[l.name] = (tally[l.name] || 0) + l.qty;
+      });
+    });
+    var best = null;
+    Object.keys(tally).forEach(function (name) {
+      if (!best || tally[name] > best.units) best = { name: name, units: tally[name] };
+    });
+    return best;
+  }
+
+  /* ---------- rendering ---------- */
+
+  var elMenu  = document.getElementById("menu");
+  var elLines = document.getElementById("lines");
+  var elTotal = document.getElementById("total");
+  var elCount = document.getElementById("count");
+  var elPay   = document.getElementById("pay");
+  var elPast  = document.getElementById("past");
+  var elReset = document.getElementById("reset");
+  var elToast = document.getElementById("toast");
+
+  function buildMenu() {
+    var groups = {};
+    MENU.forEach(function (item) {
+      (groups[item.group] = groups[item.group] || []).push(item);
+    });
+    var html = "";
+    Object.keys(groups).forEach(function (group) {
+      html += '<section class="group"><h2>' + group + "</h2><div class=\"items\">";
+      groups[group].forEach(function (item) {
+        html += '<button class="item" data-add="' + item.name + '">' +
+                  '<span class="name">' + item.name + '<span class="dots"></span></span>' +
+                  '<span class="price">' + money(item.pence) + "</span>" +
+                "</button>";
+      });
+      html += "</div></section>";
+    });
+    elMenu.innerHTML = html;
+  }
+
+  function render() {
+    // menu highlight
+    var buttons = elMenu.querySelectorAll(".item");
+    for (var i = 0; i < buttons.length; i++) {
+      var nm = buttons[i].getAttribute("data-add");
+      var on = order.some(function (l) { return l.name === nm; });
+      buttons[i].setAttribute("data-in-order", on ? "true" : "false");
+    }
+
+    // receipt
+    if (!order.length) {
+      elLines.innerHTML = '<p class="empty">No items yet.<br>Tap the board to start an order.</p>';
+    } else {
+      var html = "";
+      order.forEach(function (l) {
+        html += '<div class="line">' +
+          '<div class="top"><span class="nm">' + l.name + "</span>" +
+          "<span>" + money(l.unitPence * l.qty) + "</span></div>" +
+          '<div class="unit">' + l.qty + " @ " + money(l.unitPence) + "</div>" +
+          '<div class="stepper">' +
+            '<button data-bump="' + l.name + '" data-d="-1" aria-label="One fewer ' + l.name + '">&minus;</button>' +
+            '<input type="text" inputmode="numeric" value="' + l.qty + '" data-qty="' + l.name + '" aria-label="Quantity of ' + l.name + '">' +
+            '<button data-bump="' + l.name + '" data-d="1" aria-label="One more ' + l.name + '">+</button>' +
+            '<button class="kill" data-remove="' + l.name + '">remove</button>' +
+          "</div>" +
+          (warning && warning.name === l.name ? '<div class="warn">' + warning.text + "</div>" : "") +
+        "</div>";
+      });
+      elLines.innerHTML = html;
+    }
+
+    elTotal.textContent = money(totalPence());
+    elCount.textContent = String(itemCount());
+    elPay.disabled = !order.length;
+
+    // today panel
+    var rev = saved.reduce(function (s, r) { return s + r.totalPence; }, 0);
+    document.getElementById("s-orders").textContent = String(saved.length);
+    document.getElementById("s-rev").textContent = money(rev);
+    var best = bestSeller();
+    document.getElementById("s-best").textContent = best ? best.name + " (" + best.units + ")" : "none yet";
+
+    elPast.innerHTML = saved.slice(0, 5).map(function (r) {
+      return "<li><button data-recall=\"" + r.id + "\">#" + r.id + "</button><span>" + money(r.totalPence) + "</span></li>";
+    }).join("");
+    elReset.hidden = saved.length === 0;
+  }
+
+  var toastTimer;
+  function toast(text) {
+    elToast.textContent = text;
+    elToast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { elToast.classList.remove("show"); }, 2600);
+  }
+
+  /* ---------- wiring ---------- */
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-add],[data-bump],[data-remove],[data-recall]");
+    if (!t) return;
+    if (t.hasAttribute("data-add"))    add(t.getAttribute("data-add"), e);
+    if (t.hasAttribute("data-bump"))   bump(t.getAttribute("data-bump"), parseInt(t.getAttribute("data-d"), 10));
+    if (t.hasAttribute("data-remove")) remove(t.getAttribute("data-remove"));
+    if (t.hasAttribute("data-recall")) recall(parseInt(t.getAttribute("data-recall"), 10));
+  });
+
+  elLines.addEventListener("change", function (e) {
+    if (e.target.hasAttribute("data-qty")) {
+      setQty(e.target.getAttribute("data-qty"), e.target.value);
+    }
+  });
+  elLines.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.hasAttribute("data-qty")) {
+      e.preventDefault();
+      setQty(e.target.getAttribute("data-qty"), e.target.value);
+    }
+  });
+
+  elPay.addEventListener("click", takePayment);
+  elReset.addEventListener("click", clearSaved);
+
+  document.getElementById("stamp").textContent =
+    new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+  load();
+  buildMenu();
+  render();
+})();
+</script>
+</body>
+</html>
